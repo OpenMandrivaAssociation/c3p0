@@ -1,29 +1,19 @@
 %{?_javapackages_macros:%_javapackages_macros}
 Name:    c3p0
-Version: 0.9.2.1
-Release: 4.0%{?dist}
+Version: 0.9.5
+Release: 0.1.pre8.1
 Summary: JDBC DataSources/Resource Pools
 License: LGPLv2 or EPL
 URL:     https://github.com/swaldman/c3p0
+Group:   Development/Java
 
-
-BuildRequires: java-devel >= 1:1.6.0
-BuildRequires: java-javadoc >= 1:1.6.0
-BuildRequires: jpackage-utils
+BuildRequires: javapackages-local
 BuildRequires: ant
-BuildRequires: mchange-commons >= 0.2.3.4
+BuildRequires: mchange-commons >= 0.2.7
 
-Requires: java
-Requires: mchange-commons >= 0.2.3.4
-Requires: jpackage-utils
+Requires: mchange-commons >= 0.2.7
 
-Source0: https://github.com/swaldman/%{name}/archive/%{name}-%{version}-final.tar.gz
-
-# Patch to build on java 1.6
-Patch0: %{name}-build-on-1.6.patch
-
-# Patch to build on java 1.7 (intentionally kept separate from above)
-Patch1: %{name}-build-on-1.7.patch
+Source0: https://github.com/swaldman/c3p0/archive/c3p0-%{version}-pre8.tar.gz
 
 BuildArch: noarch
 
@@ -35,66 +25,63 @@ extension.
 
 %package  javadoc
 Summary:  API documentation for %{name}
-
-Requires: jpackage-utils
+Group:    Documentation
 
 %description javadoc
 %{summary}.
 
 %prep
-%setup -q -n %{name}-%{name}-%{version}-final
+%setup -q -n %{name}-%{name}-%{version}-pre8
 
-%patch0 -p1 -b .java6
-%patch1 -p1 -b .java7
-
-# remove all binary bits
 find -name '*.class' -exec rm -f '{}' \;
 find -name '*.jar' -exec rm -f '{}' \;
 
 # remove manifest classpath
-sed -i.bak -e "s/<attribute\ name=\"Class-Path\"\ value=\"\${mchange-commons-java\.jar\.file\.name}\"\ \/>//" build.xml
+sed -i -e "/Class-Path/d" build.xml
 
 %build
 ant \
   -Dbuild.sysclasspath=first \
-  -Dmchange-commons-java.jar.file=`build-classpath mchange-commons-java` \
+  -Dmchange-commons-java.jar.file=$(build-classpath mchange-commons-java) \
   jar javadoc
 
 sed -i -e "s|@c3p0.version.maven@|%{version}|g" \
-  -e "s|@mchange-commons-java.version.maven@|0.2.3.4|g" \
+  -e "s|@mchange-commons-java.version.maven@|0.2.7|g" \
   src/maven/pom.xml
 
-%install
-# jar
-install -d -m 755 %{buildroot}%{_javadir}
-install -p -m 644 build/%{name}-%{version}.jar \
-  %{buildroot}%{_javadir}/%{name}.jar
+%mvn_artifact src/maven/pom.xml build/c3p0-%{version}-pre8.jar
+%mvn_alias : c3p0:c3p0
 
-# javadocs
+%install
+%mvn_install
+
 install -d -m 755 %{buildroot}%{_javadocdir}/%{name}
 cp -pr build/apidocs/* %{buildroot}%{_javadocdir}/%{name}
 
-# pom
-install -d -m 755 %{buildroot}%{_mavenpomdir}
-install -p -m 644 src/maven/pom.xml \
-  %{buildroot}%{_mavenpomdir}/JPP-%{name}.pom
-
-%add_maven_depmap -a "c3p0:c3p0" JPP-%{name}.pom %{name}.jar
-
-%files
-%doc src/dist-static/CHANGELOG
+%files -f .mfiles
 %doc src/dist-static/LICENSE*
 %doc src/dist-static/RELEASE*
+%doc src/dist-static/CHANGELOG
+%doc src/dist-static/README
 %doc src/doc/index.html
-%{_javadir}/%{name}.jar
-%{_mavenpomdir}/JPP-*
-%{_mavendepmapfragdir}/%{name}
+%dir %{_javadir}/%{name}
 
 %files javadoc
 %doc src/dist-static/LICENSE*
 %{_javadocdir}/%{name}
 
 %changelog
+* Wed Jun 11 2014 Mat Booth <mat.booth@redhat.com> - 0.9.5-0.1.pre8
+- Update to latest upstream release
+- Drop upstreamed patches
+- Install with maven
+
+* Sat Jun 07 2014 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.9.2.1-6
+- Rebuilt for https://fedoraproject.org/wiki/Fedora_21_Mass_Rebuild
+
+* Thu Mar 13 2014 Mat Booth <fedora@matbooth.co.uk> - 0.9.2.1-5
+- Require java-headless, rhbz #1067993
+
 * Sat Aug 03 2013 Fedora Release Engineering <rel-eng@lists.fedoraproject.org> - 0.9.2.1-4
 - Rebuilt for https://fedoraproject.org/wiki/Fedora_20_Mass_Rebuild
 
@@ -141,3 +128,4 @@ install -p -m 644 src/maven/pom.xml \
 
 * Fri Oct 8 2010 Tom "spot" Callaway <tcallawa@redhat.com> 0.9.2-0.1.pre1
 - initial package
+
